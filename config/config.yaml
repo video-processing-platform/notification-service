@@ -1,0 +1,26 @@
+server:
+  host: 0.0.0.0
+  port: 50051
+  http_port: 50053
+
+
+grpc:
+  reflection: true
+
+logger:
+  level: debug
+
+mail:
+  provider: "mailhog" # mailhog | mailtrap
+
+  mailhog:
+    host: localhost
+    port: 1025
+
+  mailtrap:
+    host: sandbox.smtp.mailtrap.io
+    port: 2525
+    username: "3e471c09d2fa7e"
+    password: "fcb206bf9f8bde"
+
+  from: "noreply@example.com"
