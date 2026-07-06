@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/alimarzban99/notification-service/internal/domain/service"
 	"log"
 	"net/http"
 	"os"
@@ -14,7 +15,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/alimarzban99/notification-service/internal/bootstrap"
-	httpHandler "github.com/alimarzban99/notification-service/internal/interfaces/http"
 )
 
 func main() {
@@ -26,7 +26,7 @@ func main() {
 
 	defer app.Logger.Sync()
 
-	http.HandleFunc("/health", httpHandler.HealthCheck)
+	http.HandleFunc("/health", service.HealthCheck(app.GRPC, app.Mailer, app.Config))
 	http.Handle("/metrics", promhttp.Handler())
 
 	httpServer := &http.Server{

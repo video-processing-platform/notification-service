@@ -2,17 +2,19 @@ package bootstrap
 
 import (
 	"github.com/alimarzban99/notification-service/config"
-	"github.com/alimarzban99/notification-service/internal/application/notification"
+	"github.com/alimarzban99/notification-service/internal/domain/service"
 	grpcserver "github.com/alimarzban99/notification-service/internal/infrastructure/grpc"
 	"github.com/alimarzban99/notification-service/internal/infrastructure/logger"
 	"github.com/alimarzban99/notification-service/internal/infrastructure/mail"
 	"github.com/alimarzban99/notification-service/internal/infrastructure/metrics"
+	mailInterfaces "github.com/alimarzban99/notification-service/internal/interfaces/mail"
 )
 
 type App struct {
 	Config *config.Config
 	Logger logger.Logger
 	GRPC   *grpcserver.Server
+	Mailer mailInterfaces.MailService
 }
 
 func New() (*App, error) {
@@ -31,7 +33,7 @@ func New() (*App, error) {
 
 	mailer := mail.NewMailService(cfg.Mail, log)
 
-	notificationService := notification.NewService(log, mailer)
+	notificationService := service.NewService(log, mailer)
 
 	grpcServer := grpcserver.New(cfg, log, notificationService)
 
@@ -39,6 +41,7 @@ func New() (*App, error) {
 		Config: cfg,
 		Logger: log,
 		GRPC:   grpcServer,
+		Mailer: mailer,
 	}
 
 	return app, nil

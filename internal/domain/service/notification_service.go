@@ -1,8 +1,9 @@
-package notification
+package service
 
 import (
 	"context"
 	"fmt"
+	"github.com/alimarzban99/notification-service/internal/application/notification"
 	domain "github.com/alimarzban99/notification-service/internal/interfaces/mail"
 
 	"github.com/alimarzban99/notification-service/internal/infrastructure/logger"
@@ -23,7 +24,7 @@ type service struct {
 func NewService(
 	log logger.Logger,
 	mailer domain.MailService,
-) Service {
+) notification.Service {
 
 	return &service{
 		logger: log,
@@ -31,7 +32,7 @@ func NewService(
 	}
 }
 
-func (s *service) SendEmail(ctx context.Context, input SendEmailInput) error {
+func (s *service) SendEmail(ctx context.Context, input notification.SendEmailInput) error {
 
 	s.logger.Info(
 		"sending email",
@@ -63,7 +64,7 @@ func (s *service) SendEmail(ctx context.Context, input SendEmailInput) error {
 	return nil
 }
 
-func (s *service) SendProcessingCompleted(ctx context.Context, input ProcessingCompletedInput) error {
+func (s *service) SendProcessingCompleted(ctx context.Context, input notification.ProcessingCompletedInput) error {
 
 	s.logger.Info(
 		"sending processing completed email",

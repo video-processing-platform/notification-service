@@ -1,6 +1,6 @@
 module github.com/alimarzban99/notification-service
 
-go 1.26.3
+go 1.26
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect

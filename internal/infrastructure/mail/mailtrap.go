@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/alimarzban99/notification-service/internal/infrastructure/metrics"
+	"net"
 	"net/smtp"
 	"time"
 
@@ -76,6 +77,36 @@ func (m *MailTrap) Send(ctx context.Context, to, subject, body string) error {
 	m.log.Info("Mail sent via Mailtrap",
 		zap.String("to", to),
 	)
+
+	return nil
+}
+
+func (m *MailTrap) Ping(ctx context.Context) error {
+	address := fmt.Sprintf("%s:%d", m.host, m.port)
+
+	dialer := net.Dialer{
+		Timeout: 5 * time.Second,
+	}
+
+	conn, err := dialer.DialContext(ctx, "tcp", address)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	client, err := smtp.NewClient(conn, m.host)
+	if err != nil {
+		return err
+	}
+	defer client.Quit()
+
+	auth := smtp.PlainAuth("", m.username, m.password, m.host)
+
+	if ok, _ := client.Extension("AUTH"); ok {
+		if err := client.Auth(auth); err != nil {
+			return err
+		}
+	}
 
 	return nil
 }

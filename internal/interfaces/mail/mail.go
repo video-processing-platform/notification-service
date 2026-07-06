@@ -11,4 +11,6 @@ type MailService interface {
 		subject string,
 		body string,
 	) error
+
+	Ping(ctx context.Context) error
 }

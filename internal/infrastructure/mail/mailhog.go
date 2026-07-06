@@ -8,6 +8,7 @@ import (
 	"github.com/alimarzban99/notification-service/internal/infrastructure/metrics"
 	"github.com/alimarzban99/notification-service/internal/interfaces/mail"
 	"go.uber.org/zap"
+	"net"
 	"net/smtp"
 	"time"
 )
@@ -76,6 +77,28 @@ func (s *MailHog) Send(
 	s.log.Info("Email sent via mailhog",
 		zap.String("to", to),
 	)
+
+	return nil
+}
+
+func (m *MailHog) Ping(ctx context.Context) error {
+	address := fmt.Sprintf("%s:%d", m.host, m.port)
+
+	dialer := net.Dialer{
+		Timeout: 5 * time.Second,
+	}
+
+	conn, err := dialer.DialContext(ctx, "tcp", address)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	client, err := smtp.NewClient(conn, m.host)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
 
 	return nil
 }
