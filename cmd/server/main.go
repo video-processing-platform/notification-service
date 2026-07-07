@@ -54,8 +54,9 @@ func main() {
 	//------------------------------------
 
 	httpServer := &http.Server{
-		Addr:    fmt.Sprintf(":%d", app.Config.Server.HTTPPort),
-		Handler: router,
+		Addr:              fmt.Sprintf(":%d", app.Config.Server.HTTPPort),
+		Handler:           router,
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	errChan := make(chan error, 2)
