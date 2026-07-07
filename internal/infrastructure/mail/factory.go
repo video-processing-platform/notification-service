@@ -10,7 +10,7 @@ func NewMailService(cfg config.MailConfig, log logger.Logger) mail.MailService {
 
 	switch cfg.Provider {
 	case "mailtrap":
-		return NewMailTrap(cfg.MailTrap, cfg.From, log)
+		return NewMailTrap(cfg, cfg.From, log)
 	case "mailhog":
 		fallthrough
 	default:

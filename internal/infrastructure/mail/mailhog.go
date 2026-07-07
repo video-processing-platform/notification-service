@@ -14,29 +14,39 @@ import (
 )
 
 type MailHog struct {
-	host string
-	port int
-	from string
-	auth smtp.Auth
-	log  logger.Logger
+	host          string
+	port          int
+	from          string
+	auth          smtp.Auth
+	log           logger.Logger
+	timeout       int
+	retryAttempts int
+	retryDelay    int
 }
 
 func NewMailHog(cfg config.MailConfig, log logger.Logger) mail.MailService {
 	return &MailHog{
-		host: cfg.MailHog.Host,
-		port: cfg.MailHog.Port,
-		from: cfg.From,
-		auth: nil,
-		log:  log,
+		host:          cfg.MailHog.Host,
+		port:          cfg.MailHog.Port,
+		from:          cfg.From,
+		auth:          nil,
+		log:           log,
+		timeout:       cfg.Timeout,
+		retryAttempts: cfg.RetryAttempts,
+		retryDelay:    cfg.RetryDelay,
 	}
 }
 
 func (m *MailHog) Send(
-	_ context.Context,
+	ctx context.Context,
 	to string,
 	subject string,
 	body string,
 ) error {
+	timeout := time.Duration(m.timeout) * time.Second
+
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
 
 	start := time.Now()
 
@@ -54,12 +64,23 @@ func (m *MailHog) Send(
 			body + "\r\n",
 	)
 
-	err := smtp.SendMail(
-		addr,
-		m.auth,
-		m.from,
-		[]string{to},
-		msg,
+	delay := time.Duration(m.retryDelay) * time.Second
+
+	err := retry(
+		ctx,
+		m.retryAttempts,
+		delay,
+		func() error {
+
+			return smtp.SendMail(
+				addr,
+				m.auth,
+				m.from,
+				[]string{to},
+				msg,
+			)
+
+		},
 	)
 
 	if err != nil {

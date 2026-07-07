@@ -12,7 +12,9 @@ logger:
 
 mail:
   provider: "mailhog" # mailhog | mailtrap
-
+  timeout: 10
+  retry_attempts: 3
+  retry_delay: 10
   mailhog:
     host: localhost
     port: 1025

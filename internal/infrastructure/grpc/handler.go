@@ -13,10 +13,7 @@ type Handler struct {
 	service notification.Service
 }
 
-func NewHandler(
-	service notification.Service,
-) *Handler {
-
+func NewHandler(service notification.Service) *Handler {
 	return &Handler{
 		service: service,
 	}

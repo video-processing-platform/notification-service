@@ -21,10 +21,7 @@ type service struct {
 	mailer domain.MailService
 }
 
-func NewService(
-	log logger.Logger,
-	mailer domain.MailService,
-) notification.Service {
+func NewService(log logger.Logger, mailer domain.MailService) notification.Service {
 
 	return &service{
 		logger: log,

@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"github.com/alimarzban99/notification-service/internal/domain/service"
 	"log"
 	"net/http"
 	"os"
@@ -11,10 +11,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 
 	"github.com/alimarzban99/notification-service/internal/bootstrap"
+	"github.com/alimarzban99/notification-service/internal/domain/service"
 )
 
 func main() {
@@ -25,34 +27,60 @@ func main() {
 	}
 
 	defer func() {
-		if err := app.Logger.Sync(); err != nil {
-			app.Logger.Error(err.Error())
-		}
+		_ = app.Logger.Sync()
 	}()
 
-	http.HandleFunc("/health", service.HealthCheck(app.GRPC, app.Mailer, app.Config))
-	http.Handle("/metrics", promhttp.Handler())
+	//------------------------------------
+	// Gin Router
+	//------------------------------------
+
+	router := gin.New()
+
+	router.Use(
+		gin.Logger(),
+		gin.Recovery(),
+	)
+
+	router.GET("/health", gin.WrapF(
+		service.HealthCheck(app.GRPC, app.Mailer, app.Config),
+	))
+
+	router.GET("/metrics", gin.WrapH(
+		promhttp.Handler(),
+	))
+
+	//------------------------------------
+	// HTTP Server
+	//------------------------------------
 
 	httpServer := &http.Server{
-		Addr:              fmt.Sprintf(":%d", app.Config.Server.HTTPPort),
-		Handler:           nil,
-		ReadHeaderTimeout: 5 * time.Second,
+		Addr:    fmt.Sprintf(":%d", app.Config.Server.HTTPPort),
+		Handler: router,
 	}
 
 	errChan := make(chan error, 2)
 
-	// HTTP Server
+	//------------------------------------
+	// Start HTTP
+	//------------------------------------
+
 	go func() {
-		app.Logger.Info("HTTP server started",
+		app.Logger.Info(
+			"HTTP server started",
 			zap.Int("port", app.Config.Server.HTTPPort),
 		)
 
-		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := httpServer.ListenAndServe(); err != nil &&
+			!errors.Is(err, http.ErrServerClosed) {
+
 			errChan <- err
 		}
 	}()
 
-	// gRPC Server
+	//------------------------------------
+	// Start gRPC
+	//------------------------------------
+
 	go func() {
 		app.Logger.Info("gRPC server started")
 
@@ -61,28 +89,51 @@ func main() {
 		}
 	}()
 
+	//------------------------------------
+	// Wait Signal
+	//------------------------------------
+
 	stop := make(chan os.Signal, 1)
+
 	signal.Notify(
 		stop,
 		os.Interrupt,
+		syscall.SIGINT,
 		syscall.SIGTERM,
 	)
 
 	select {
+
 	case <-stop:
 		app.Logger.Info("shutdown signal received")
 
 	case err := <-errChan:
-		app.Logger.Error("server stopped unexpectedly", zap.Error(err))
+		app.Logger.Error(
+			"server stopped unexpectedly",
+			zap.Error(err),
+		)
 	}
 
+	//------------------------------------
 	// Graceful Shutdown
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	//------------------------------------
+
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		5*time.Second,
+	)
 	defer cancel()
 
+	app.Logger.Info("stopping HTTP server...")
+
 	if err := httpServer.Shutdown(ctx); err != nil {
-		app.Logger.Error("failed to shutdown http server", zap.Error(err))
+		app.Logger.Error(
+			"failed to shutdown http server",
+			zap.Error(err),
+		)
 	}
+
+	app.Logger.Info("stopping gRPC server...")
 
 	app.GRPC.Stop()
 

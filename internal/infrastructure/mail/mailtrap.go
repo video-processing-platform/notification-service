@@ -14,26 +14,37 @@ import (
 )
 
 type MailTrap struct {
-	host     string
-	port     int
-	username string
-	password string
-	from     string
-	log      logger.Logger
+	host          string
+	port          int
+	username      string
+	password      string
+	from          string
+	log           logger.Logger
+	timeout       int
+	retryAttempts int
+	retryDelay    int
 }
 
-func NewMailTrap(cfg config.MailTrapConfig, from string, log logger.Logger) *MailTrap {
+func NewMailTrap(cfg config.MailConfig, from string, log logger.Logger) *MailTrap {
 	return &MailTrap{
-		host:     cfg.Host,
-		port:     cfg.Port,
-		username: cfg.Username,
-		password: cfg.Password,
-		from:     from,
-		log:      log,
+		host:          cfg.MailTrap.Host,
+		port:          cfg.MailTrap.Port,
+		username:      cfg.MailTrap.Username,
+		password:      cfg.MailTrap.Password,
+		from:          from,
+		log:           log,
+		timeout:       cfg.Timeout,
+		retryAttempts: cfg.RetryAttempts,
+		retryDelay:    cfg.RetryDelay,
 	}
 }
 
 func (m *MailTrap) Send(ctx context.Context, to, subject, body string) error {
+
+	timeout := time.Duration(m.timeout) * time.Second
+
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
 
 	start := time.Now()
 	defer func() {
@@ -56,12 +67,22 @@ func (m *MailTrap) Send(ctx context.Context, to, subject, body string) error {
 			body + "\r\n",
 	)
 
-	err := smtp.SendMail(
-		addr,
-		auth,
-		m.from,
-		[]string{to},
-		msg,
+	delay := time.Duration(m.retryDelay) * time.Second
+	err := retry(
+		ctx,
+		m.retryAttempts,
+		delay,
+		func() error {
+
+			return smtp.SendMail(
+				addr,
+				auth,
+				m.from,
+				[]string{to},
+				msg,
+			)
+
+		},
 	)
 
 	if err != nil {
