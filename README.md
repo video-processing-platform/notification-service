@@ -97,7 +97,6 @@ notification-service/
 | SendEmail               | Send a custom email                            |
 | SendProcessingCompleted | Notify user when video processing is completed |
 
-
 ## Testing gRPC
 
 ### List Available Services
@@ -255,7 +254,6 @@ Available metrics include:
 
 ---
 
-
 ## Running the Service
 
 ### Install dependencies
@@ -278,4 +276,27 @@ protoc \
 
 ```bash
 go run ./cmd/server
+```
+
+
+---
+
+## Code Quality
+
+Run the linter:
+
+```bash
+golangci-lint run
+```
+
+Format the code:
+
+```bash
+gofmt -w .
+```
+
+Run all tests:
+
+```bash
+go test ./...
 ```

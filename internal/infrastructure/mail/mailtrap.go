@@ -92,13 +92,26 @@ func (m *MailTrap) Ping(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
+
+	defer func() {
+		if err := conn.Close(); err != nil {
+			m.log.Warn("failed to close smtp connection",
+				zap.Error(err),
+			)
+		}
+	}()
 
 	client, err := smtp.NewClient(conn, m.host)
 	if err != nil {
 		return err
 	}
-	defer client.Quit()
+	defer func() {
+		if err := client.Quit(); err != nil {
+			m.log.Warn("failed to quit smtp client",
+				zap.Error(err),
+			)
+		}
+	}()
 
 	auth := smtp.PlainAuth("", m.username, m.password, m.host)
 

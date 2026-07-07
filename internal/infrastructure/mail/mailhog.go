@@ -31,8 +31,8 @@ func NewMailHog(cfg config.MailConfig, log logger.Logger) mail.MailService {
 	}
 }
 
-func (s *MailHog) Send(
-	ctx context.Context,
+func (m *MailHog) Send(
+	_ context.Context,
 	to string,
 	subject string,
 	body string,
@@ -44,7 +44,7 @@ func (s *MailHog) Send(
 		metrics.EmailSendDuration.Observe(time.Since(start).Seconds())
 	}()
 
-	addr := fmt.Sprintf("%s:%d", s.host, s.port)
+	addr := fmt.Sprintf("%s:%d", m.host, m.port)
 
 	msg := []byte(
 		"To: " + to + "\r\n" +
@@ -56,8 +56,8 @@ func (s *MailHog) Send(
 
 	err := smtp.SendMail(
 		addr,
-		s.auth,
-		s.from,
+		m.auth,
+		m.from,
 		[]string{to},
 		msg,
 	)
@@ -65,7 +65,7 @@ func (s *MailHog) Send(
 	if err != nil {
 		metrics.EmailsFailedTotal.Inc()
 
-		s.log.Error("mailhog send failed",
+		m.log.Error("mailhog send failed",
 			zap.String("to", to),
 			zap.String("error", err.Error()),
 		)
@@ -74,7 +74,7 @@ func (s *MailHog) Send(
 
 	metrics.EmailsSentTotal.Inc()
 
-	s.log.Info("Email sent via mailhog",
+	m.log.Info("Email sent via mailhog",
 		zap.String("to", to),
 	)
 
@@ -92,13 +92,26 @@ func (m *MailHog) Ping(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
+
+	defer func() {
+		if err := conn.Close(); err != nil {
+			m.log.Warn("failed to close smtp connection",
+				zap.Error(err),
+			)
+		}
+	}()
 
 	client, err := smtp.NewClient(conn, m.host)
 	if err != nil {
 		return err
 	}
-	defer client.Close()
 
+	defer func() {
+		if err := client.Close(); err != nil {
+			m.log.Warn("failed to close smtp client",
+				zap.Error(err),
+			)
+		}
+	}()
 	return nil
 }

@@ -24,14 +24,19 @@ func main() {
 		log.Fatal(err)
 	}
 
-	defer app.Logger.Sync()
+	defer func() {
+		if err := app.Logger.Sync(); err != nil {
+			app.Logger.Error(err.Error())
+		}
+	}()
 
 	http.HandleFunc("/health", service.HealthCheck(app.GRPC, app.Mailer, app.Config))
 	http.Handle("/metrics", promhttp.Handler())
 
 	httpServer := &http.Server{
-		Addr:    fmt.Sprintf(":%d", app.Config.Server.HttpPort),
-		Handler: nil,
+		Addr:              fmt.Sprintf(":%d", app.Config.Server.HTTPPort),
+		Handler:           nil,
+		ReadHeaderTimeout: 5 * time.Second,
 	}
 
 	errChan := make(chan error, 2)
@@ -39,7 +44,7 @@ func main() {
 	// HTTP Server
 	go func() {
 		app.Logger.Info("HTTP server started",
-			zap.Int("port", app.Config.Server.HttpPort),
+			zap.Int("port", app.Config.Server.HTTPPort),
 		)
 
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
